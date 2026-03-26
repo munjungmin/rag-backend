@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os 
 from routers import users
+from routers import projects
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(users.router)
-
+app.include_router(projects.router) 
 
 # Health check endpoints
 @app.get("/")
