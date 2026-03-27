@@ -84,6 +84,8 @@ def create_project(project: ProjectCreate, clerk_id: str = Depends(get_current_u
             "data": created_project
         }
     
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -96,6 +98,10 @@ def delete_project(
     project_id: str,
     clerk_id: str = Depends(get_current_user)
 ):
+    """
+    Delete a project and all related data
+    (CASCADE handles all related data: settings, documents, chunks, chats, messages)
+    """
     try:
         # Verify project exists and belongs to user
         project_result = supabase.table("projects").select("*").eq("id", project_id).eq("clerk_id", clerk_id).execute()
@@ -120,11 +126,101 @@ def delete_project(
             "message": "Project deleted successfully",
             "data": deleted_result.data[0]
         }
-
+    
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete project: {str(e)}"
+        )
+
+
+@router.get("/api/projects/{project_id}")
+def get_project(
+    project_id: str,
+    clerk_id: str = Depends(get_current_user)
+):
+    """
+    Retrieve a specific project by ID
+    """
+    try:
+        project_result = supabase.table("projects").select("*").eq("id", project_id).eq("clerk_id", clerk_id).execute()
+
+        if not project_result.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Project not found"
+            )
+    
+        return {
+            "success": True,
+            "message": "Project retrieved successfully",
+            "data": project_result.data[0]
+        }
+    
+    except HTTPException:
+        raise    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get project: {str(e)}"
+        )
+    
+
+@router.get("/api/projects/{project_id}/chats")
+def get_project_chats(
+    project_id: str, 
+    clerk_id: str = Depends(get_current_user)
+):
+    """
+    Retrieve all chats for a specific project
+    """
+    try:
+        result = supabase.table("chats").select("*").eq("project_id", project_id).eq("clerk_id", clerk_id).order("created_at", desc=True).execute()
+
+        return {
+            "success": True,
+            "message": "Project chats retrieved successfully",
+            "data": result.data     # supabase는 결과가 없어도 null이 아니라 [] 반환
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An internal server error occurred while retrieving project chats: {str(e)}"
+        )
+
+
+@router.get("/api/projects/{project_id}/settings")
+def get_project_settings(
+    project_id: str,
+    clerk_id: str = Depends(get_current_user)
+):
+    """
+    Retrieve project settings for a specific project
+    """
+    try:
+        result = supabase.table("project_settings").select("*").eq("project_id", project_id).execute() 
+
+        if not result.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Project settings not found" 
+            )
+        
+        return {
+            "success": True,
+            "message": "Project settings retrieved successfully",
+            "data": result.data[0]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"An internal server error occurred while updating project settings: {str(e)}"
         )
 
 
