@@ -143,3 +143,51 @@ async def confirm_file_upload(
             status_code=500,
             detail=f"Failed to confirm upload: {str(e)}" 
         )
+        
+
+class UrlAddRequest(BaseModel):
+    url: str
+
+@router.post("/api/projects/{project_id}/urls")
+async def add_website_url(
+    project_id: str,
+    url_request: UrlAddRequest,
+    clerk_id: str = Depends(get_current_user)
+):
+    try:
+        # Basic URL validation
+        url = url_request.url.strip()
+
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+
+        result = supabase.table("project_documents").insert({
+            "project_id": project_id,
+            "filename": url,
+            "s3_key": "",
+            "file_size": 0,
+            "file_type": "text/html",
+            "processing_status": "queued",
+            "clerk_id": clerk_id,
+            "source_url": url,
+            "source_type": "url"
+        }).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create URL record")
+        
+        # Start background processing
+
+
+        return {
+            "success": True,
+            "message": "URL added successfully, processing started",
+            "data": result.data[0]
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add URL: {str(e)}" 
+        )
+        
