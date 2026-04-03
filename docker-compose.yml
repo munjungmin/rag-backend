@@ -1,0 +1,20 @@
+services:
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - .:/app
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://host.docker.internal:6379/0
+      - SUPABASE_API_URL=http://supabase_kong_server:8000
+    networks:
+      - default
+      - supabase_network
+
+networks:
+  supabase_network:
+    external: true
+    name: supabase_network_server

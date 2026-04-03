@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 import boto3
 
-load_dotenv()
+load_dotenv(override=False)
 
 # Supabase setup
 supabase_url = os.getenv("SUPABASE_API_URL")
