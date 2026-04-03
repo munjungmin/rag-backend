@@ -1,3 +1,6 @@
+[tool.poetry]
+package-mode = false
+
 [project]
 name = "server"
 version = "0.1.0"
@@ -5,14 +8,19 @@ description = ""
 authors = [
     {name = "Your Name",email = "you@example.com"}
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "fastapi (>=0.135.2,<0.136.0)",
     "uvicorn (>=0.42.0,<0.43.0)",
     "supabase (>=2.28.3,<3.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
     "clerk-backend-api (>=5.0.6,<6.0.0)",
-    "boto3 (>=1.42.78,<2.0.0)"
+    "boto3 (>=1.42.78,<2.0.0)",
+    "celery (>=5.6.3,<6.0.0)",
+    "redis (>=7.4.0,<8.0.0)",
+    "langchain (==0.3.27)",
+    "langchain-community (==0.3.27)",
+    "langchain-openai (==0.3.28)"
 ]
 
 
