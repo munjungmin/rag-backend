@@ -20,7 +20,8 @@ dependencies = [
     "redis (>=7.4.0,<8.0.0)",
     "langchain (==0.3.27)",
     "langchain-community (==0.3.27)",
-    "langchain-openai (==0.3.28)"
+    "langchain-openai (==0.3.28)",
+    "scrapingbee (>=2.0.2,<3.0.0)"
 ]
 
 

@@ -3050,6 +3050,21 @@ botocore = ">=1.37.4,<2.0a0"
 crt = ["botocore[crt] (>=1.37.4,<2.0a0)"]
 
 [[package]]
+name = "scrapingbee"
+version = "2.0.2"
+description = "ScrapingBee Python SDK"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "scrapingbee-2.0.2-py3-none-any.whl", hash = "sha256:28d1c9b250917e45924d8a21cf7d55776c701d6d1c5283aabf3ef1911462a291"},
+    {file = "scrapingbee-2.0.2.tar.gz", hash = "sha256:312a2f2beab03eb687e568c3688533c44e543104eea82f18a4183f9ce1042e0f"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -4064,4 +4079,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "5e6d580ed89ec8e665203f5e353fd6e52f34e085b667a86c33a27d22c684d491"
+content-hash = "8f6a418bace76bafe6d795b30bf9dc6d892b86cc2069b7cdbea65b5fb798844c"
