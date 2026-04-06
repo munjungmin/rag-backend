@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from database import supabase, s3_client, BUCKET_NAME
 from routers.auth import get_current_user
+from tasks import process_document
 
 router = APIRouter(
     tags=["files"]
@@ -123,11 +124,18 @@ async def confirm_file_upload(
         }).eq("s3_key", s3_key).eq("clerk_id", clerk_id).execute()
 
         document = result.data[0]
+        document_id = document['id']
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Document not found or access denied")
         
-        # Start background preprocessing of the current file 
+        # Start background preprocessing of the current file with Celery
+        task = process_document.delay(document_id)
+        
+        # Store this task ID so that we can track it later if needed
+        supabase.table("project_documents").update({
+            "task_id": task.id
+        }).eq("id", document_id).execute()
 
 
 
@@ -176,7 +184,16 @@ async def add_website_url(
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to create URL record")
         
-        # Start background processing
+        document = result.data[0]
+        document_id = document['id']
+
+        # Start background preprocessing of the current file with Celery
+        task = process_document.delay(document_id)
+        
+        # Store this task ID so that we can track it later if needed
+        supabase.table("project_documents").update({
+            "task_id": task.id
+        }).eq("id", document_id).execute()
 
 
         return {
@@ -190,4 +207,54 @@ async def add_website_url(
             status_code=500,
             detail=f"Failed to add URL: {str(e)}" 
         )
+
+
+@router.delete("/api/projects/{project_id}/files/{file_id}")
+async def delete_file(
+    project_id: str,
+    file_id: str, 
+    clerk_id: str = Depends(get_current_user)
+):
+    try:
+        # Get the file record (this also verifies ownership view clerk_id)
+        file_result = supabase.table("project_documents").select("*").eq("id", file_id).eq("clerk_id", clerk_id).eq("project_id", project_id).execute()
+
+        if not file_result.data:
+            raise HTTPException(status_code=404, detail="File not found or access denied")
         
+        file_record = file_result.data[0]
+        s3_key = file_record["s3_key"]
+
+        # Delete from S3 (only for actual files, not URLs)
+
+        if s3_key:
+            try:
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=s3_key)
+                print(f"Deleted from S3: {s3_key}")
+
+            except Exception as s3_error:
+                print(f"Failed to delete from S3: {s3_error}")
+
+
+        # Delete documnet record from DB
+        delete_result = (
+            supabase.table("project_documents")
+            .delete()
+            .eq("id", file_id)
+            .execute()
+        )
+
+        if not delete_result.data:
+            raise HTTPException(status_code=500, details="Failed to delete file")
+        
+        return {
+            "success": True,
+            "message": "File deleted successfully",
+            "data": delete_result.data[0]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete file: {str(e)}" 
+        )
