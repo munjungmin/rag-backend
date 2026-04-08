@@ -3,11 +3,12 @@ from celery import Celery
 from database import supabase, s3_client, BUCKET_NAME
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import HumanMessage
-
+from scrapingbee import ScrapingBeeClient
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+scrapingbee_client = ScrapingBeeClient(api_key=os.getenv("SCRAPINGBEE_API_KEY"))
 
 # Initialize LLM for summarisation
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
@@ -107,8 +108,18 @@ def download_and_partition(document_id: str, document: dict):
 
     if source_type == "url":
         # Crawl URL
+        url = document["source_url"]
 
-        pass
+        # Fetch content with scrapingBee
+        response = scrapingbee_client.get(url)
+
+        # Save to temp file
+        temp_file = f"/tmp/{document_id}.html"
+        with open(temp_file, 'wb') as f:
+            f.write(response.content)
+
+        elements = partition_document(temp_file, "html",  source_type="url")
+        
     else:
         # Handle file processing
         s3_key = document["s3_key"]
@@ -137,9 +148,12 @@ def partition_document(temp_file: str, file_type: str, source_type: str = "file"
     """Partition document based on file type and source type"""
 
     from unstructured.partition.pdf import partition_pdf # celery-worker container에서 실행
+    from unstructured.partition.html import partition_html # celery-worker container에서 실행
 
     if source_type == "url":
-        pass 
+        return partition_html(
+            filename=temp_file
+        )
 
     if file_type == "pdf":
         return partition_pdf(
