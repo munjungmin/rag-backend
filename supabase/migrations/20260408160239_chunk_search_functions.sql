@@ -45,3 +45,46 @@ $function$;
       
 -- <=> 연산을 where절과 orderby 절에서 두 번 사용함 
 -- postgreSQL은 두 연산에서 HNSW index를 타기 때문에 모두 빠르게 처리할 수 있다. 
+
+
+-- Keyword search function 
+CREATE OR REPLACE FUNCTION keyword_search_document_chunks(
+    query_text text, 
+    filter_document_ids uuid[], 
+    chunks_per_search integer DEFAULT 20
+)
+RETURNS TABLE(
+    id uuid, 
+    document_id uuid, 
+    content text, 
+    chunk_index integer, 
+    created_at timestamp with time zone, 
+    page_number integer, 
+    char_count integer, 
+    type jsonb, 
+    original_content jsonb, 
+    embedding vector
+)
+LANGUAGE sql
+AS $function$
+SELECT
+    dc.id,
+    dc.document_id,
+    dc.content,
+    dc.chunk_index,
+    dc.created_at,
+    dc.page_number,
+    dc.char_count,
+    dc.type,
+    dc.original_content,
+    dc.embedding
+FROM
+    document_chunks dc
+WHERE
+    dc.fts @@ websearch_to_tsquery('english', query_text)
+    AND dc.document_id = ANY(filter_document_ids)
+ORDER BY 
+    ts_rank_cd(dc.fts, websearch_to_tsquery('english', query_text)) DESC
+LIMIT 
+    chunks_per_search;
+$function$;

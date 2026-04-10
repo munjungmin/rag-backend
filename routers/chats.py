@@ -147,6 +147,18 @@ def vector_search(query: str, document_ids: List[str], settings: dict) -> List[D
 
     return result.data if result.data else []
 
+def keyword_search(query: str, document_ids: List[str], settings: dict) -> List[Dict]:
+    """ Execute keyword search"""
+    result = supabase.rpc("keyword_search_document_chunks", {
+        "query_text": query,
+        "filter_document_ids": document_ids,
+        "chunks_per_search": settings["chunks_per_search"]
+    }).execute()
+
+    return result.data if result.data else []
+
+
+
 def build_context(chunks: List[Dict]) -> Tuple[List[str], List[str], List[str], List[Dict]]:
     """
     Returns:
@@ -398,13 +410,16 @@ async def send_message(
         # 4. Generate query embedding
         # 5. Perform vector search using the RPC function
         # return only chunks above a similarity threshold, sorted by relevance, limited to the top N results.
-        chunks = vector_search(message, document_ids, settings)
-        print(f"✅ Retrieved {len(chunks)} relevant chunks from vector search")
+        # chunks = vector_search(message, document_ids, settings)
+        # print(f"✅ Retrieved {len(chunks)} relevant chunks from vector search")
+
+        chunks = keyword_search(message, document_ids, settings)
+
 
         # 6. Build context from retrieved chunks
         # Format the retrieved chunks into a structured context with citations
         texts, images, tables, citations = build_context(chunks)
-        #validate_context(texts, images, tables, citations)
+        validate_context(texts, images, tables, citations)
 
 
         # 7. Build system prompt with injected context 
