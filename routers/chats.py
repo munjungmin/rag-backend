@@ -205,6 +205,25 @@ def hybrid_search(query: str, document_ids: List[str], settings: dict) -> List[D
     )
 
 
+class QueryVariations(BaseModel):
+    queries: List[str]
+
+def  generate_query_variations(original_query: str, num_queries: int = 3) -> list[str]:
+    """ Generate query variations using LLM """
+    system_prompt = f"""Generate {num_queries-1} alternative ways to phrase this question for document search. Use different keywords and synonyms while maintaining the same intent. Return exactly {num_queries-1} variations."""
+
+    try:
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"Original query: {original_query}")
+        ]
+
+        structured_llm = llm.with_structured_output(QueryVariations)
+        result = structured_llm.invoke(messages)
+
+        return [original_query] + result.queries[:num_queries-1]
+    except Exception:
+        return [original_query]
 
 def build_context(chunks: List[Dict]) -> Tuple[List[str], List[str], List[str], List[Dict]]:
     """
@@ -470,7 +489,19 @@ async def send_message(
             chunks = hybrid_search(message, document_ids, settings)
             print(f" Hybrid search returned: {len(chunks)} chunks")
 
+        elif strategy == "multi-query-vector":
+            print(f" Executing: Multi-Query Vector Search ({settings["number_of_queries"]} queries)")
+            queries = generate_query_variations(message, settings["number_of_queries"])
+            print(f"Generated queries: {queries}")
 
+            all_results = []
+            for i, q in enumerate[any](queries):
+                results = vector_search(q, document_ids, settings)
+                print(f"Query {i+1} '{q}' returned: {len(results)} chunks")
+                all_results.append(results)
+            chunks = rrf_rank_and_fuse(all_results)
+            print(f" RRF fusion returned: {len(chunks)} chunks")
+             
 
 
         
