@@ -495,18 +495,37 @@ async def send_message(
             print(f"Generated queries: {queries}")
 
             all_results = []
-            for i, q in enumerate[any](queries):
+            for i, q in enumerate[str](queries):
                 results = vector_search(q, document_ids, settings)
                 print(f"Query {i+1} '{q}' returned: {len(results)} chunks")
                 all_results.append(results)
             chunks = rrf_rank_and_fuse(all_results)
             print(f" RRF fusion returned: {len(chunks)} chunks")
              
+        elif strategy == "multi-query-hybrid":
+            print(f" Executing: Multi-Query Hybrid Search ({settings["number_of_queries"]} queries)")
+            queries = generate_query_variations(message, settings["number_of_queries"])
+            print(f"Generated queries: {queries}")
 
+            # Stage 1: Per-query hybrid fusion
+            all_hybrid_results = []
+            for i, q in enumerate[str](queries):
+                print(f"\n Query {i+1}: '{q}")
 
-        
+                # Use the existing hybrid_search function which handles weights
+                hybrid_results = hybrid_search(q, document_ids, settings)
 
+                print(f"Hybrid fusion returned: {len(hybrid_results)} chunks")
 
+                all_hybrid_results.append(hybrid_results)
+
+            # Stage 2: Cross-query fusion
+            print(f"\nFinal RRF fusion across {len(all_hybrid_results)} queries")
+            chunks = rrf_rank_and_fuse(all_hybrid_results)
+            print(f" Final result: {len(chunks)} chunks")
+
+        # Trim to final context size
+        chunks = chunks[:settings["final_context_size"]]
 
         # 6. Build context from retrieved chunks
         # Format the retrieved chunks into a structured context with citations
