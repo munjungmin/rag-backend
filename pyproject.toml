@@ -1,29 +1,27 @@
 [tool.poetry]
-package-mode = false
-
-[project]
-name = "server"
+name = "rag-project"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
-requires-python = ">=3.13,<4.0"
-dependencies = [
-    "fastapi (>=0.135.2,<0.136.0)",
-    "uvicorn (>=0.42.0,<0.43.0)",
-    "supabase (>=2.28.3,<3.0.0)",
-    "python-dotenv (>=1.2.2,<2.0.0)",
-    "clerk-backend-api (>=5.0.6,<6.0.0)",
-    "boto3 (>=1.42.78,<2.0.0)",
-    "celery (>=5.6.3,<6.0.0)",
-    "redis (>=7.4.0,<8.0.0)",
-    "langchain (==0.3.27)",
-    "langchain-community (==0.3.27)",
-    "langchain-openai (==0.3.28)",
-    "scrapingbee (>=2.0.2,<3.0.0)"
-]
+readme = "README.md"
+package-mode = false
 
+[tool.poetry.dependencies]
+python = ">=3.13,<4.0"
+fastapi = ">=0.135.2,<0.136.0"
+uvicorn = ">=0.42.0,<0.43.0"
+supabase = ">=2.28.3,<3.0.0"
+python-dotenv = ">=1.2.2,<2.0.0"
+clerk-backend-api = ">=5.0.6,<6.0.0"
+boto3 = ">=1.42.78,<2.0.0"
+celery = ">=5.6.3,<6.0.0"
+redis = ">=7.4.0,<8.0.0"
+langchain = ">=1.2.0,<2.0.0"
+langchain-community = ">=0.4.1,<1.0.0"
+langchain-openai = ">=1.0.3,<2.0.0"
+unstructured = {version = "0.18.11", extras = ["all-docs"]}
+scrapingbee = ">=2.0.2,<3.0.0"
+langgraph = ">=1.1.0,<2.0.0"
+structlog = ">=25.5.0,<26.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

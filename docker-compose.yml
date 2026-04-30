@@ -1,20 +1,57 @@
 services:
-  celery-worker:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
+    image: rag-project:1.0.0
+    container_name: rag-api
+    ports:
+      - "8000:8000"
     volumes:
-      - .:/app
+      - ./logs:/app/logs
     env_file:
-      - ./.env
-    environment:
-      - REDIS_URL=redis://host.docker.internal:6379/0
-      - SUPABASE_API_URL=http://supabase_kong_server:8000
-    networks:
-      - default
-      - supabase_network
+      - .env
+    command: uvicorn src.server:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: rag-project:1.0.0
+    volumes:
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    command: >
+      celery -A src.services.celery:celery_app worker
+      --loglevel=info
+      --pool=threads
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
 networks:
-  supabase_network:
-    external: true
-    name: supabase_network_server
+  default:
+    name: rag-network
+
+volumes:
+  redis_data:
