@@ -4,6 +4,9 @@ from src.routes.userRoutes import router as userRoutes
 from src.routes.projectRoutes import router as projectRoutes
 from src.routes.projectFilesRoutes import router as projectFilesRoutes
 from src.routes.chatRoutes import router as chatRoutes
+from src.config.log_config import configure_logging
+
+configure_logging()
 
 # FastAPI 앱 생성
 app = FastAPI(
