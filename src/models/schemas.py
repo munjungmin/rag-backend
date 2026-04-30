@@ -67,3 +67,12 @@ class MessageCreate(BaseModel):
 class MessageRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
+
+    
+class InputGuardrailCheck(BaseModel):
+    """Schema for input safety check"""
+    is_safe: bool = Field(description="입력이 처리하기 안전한지 여부")
+    is_toxic: bool = Field(description="유해하거나 독성 있는 콘텐츠 포함 여부")
+    is_prompt_injection: bool = Field(description="프롬프트 인젝션 시도로 의심되는지 여부")
+    contains_pii: bool = Field(description="개인 식별 정보(PII) 포함 여부")
+    reason: str = Field(description="안전하지 않은 경우 간략한 이유, 안전한 경우 빈 문자열")

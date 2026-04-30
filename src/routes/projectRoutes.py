@@ -1,6 +1,7 @@
+from typing import Dict, List
+
 from fastapi import APIRouter, Depends, HTTPException
-from src.rag.retrieval.retrieval import retrieve_context
-from src.rag.retrieval.utils import prepare_prompt_and_invoke_llm
+from src.agents.simple_agent import create_rag_agent
 from src.services.supabase import supabase
 from src.models.schemas import MessageCreate, MessageRole, ProjectCreate, ProjectSettings
 from src.services.clerkAuth import get_current_user_clerk_id
@@ -250,6 +251,39 @@ async def update_project_settings(
             detail=f"Failed to update project settings: {str(e)}"
         )
 
+def get_chat_history(chat_id: str) -> List[Dict[str, str]]:
+    """
+        최근 10개 채팅 내역을 가져오기
+    """
+    try:
+        messages_result =(
+            supabase.table("messages")
+            .select("id, role, content")
+            .eq("chat_id", chat_id) 
+            .order("created_at", desc=True) # 최신순
+            .limit(10)  
+            .execute()
+        )
+
+        if not messages_result.data:
+            return []
+        
+        recent_messages = list(reversed(messages_result.data)) # 시간순으로 다시 정렬
+
+        formatted_history = []
+        for msg in recent_messages:
+            formatted_history.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+
+        return formatted_history
+
+    except Exception:
+        # 만약 내역을 가져오지 못한다면 빈 리스트 리턴
+        return []
+
+
 
 @router.post("/{project_id}/chats/{chat_id}/messages")
 async def send_message(
@@ -267,7 +301,10 @@ async def send_message(
     * 5. AI 응답을 데이터베이스에 삽입
     """
     try:
-        # Step 1 : 메시지를 데이터베이스에 삽입
+        # Step 1: 새로운 채팅을 저장하기 전에 기존 채팅 내역 불러오기 
+        chat_history = get_chat_history(chat_id)
+
+        # Step 2 : 새 메시지 DB에 저장
         message = message.content
         message_insert_data = {
             "content": message,
@@ -282,13 +319,19 @@ async def send_message(
         if not message_creation_result.data:
             raise HTTPException(status_code=422, detail="Failed to create message")
 
-        # Step 3 : 검색 (Retrieval)
-        texts, images, tables, citations = retrieve_context(project_id, message)
-
-        # Step 4 : 생성 (검색된 컨텍스트 + 사용자 메시지)
-        final_response = prepare_prompt_and_invoke_llm(
-            user_query=message, texts=texts, images=images, tables=tables
+        # Step 3 : agent 호출 
+        agent = create_rag_agent(
+            project_id=project_id,
+            model="gpt-4o",
+            chat_history=chat_history
         )
+
+        result = agent.invoke({
+            "messages": [{"role": "user", "content": message}]
+        })
+
+        final_response = result["messages"][-1].content
+        citations = result.get("citations", [])
 
         # Step 5: AI 응답을 데이터베이스에 삽입
         ai_response_insert_data = {
@@ -320,16 +363,3 @@ async def send_message(
             status_code=500,
             detail=f"An internal server error occurred while creating message: {str(e)}",
         )
-
-
-# clerk_id를 클라이언트가 서버에게 바로 넘기면, 해커가 그걸 탈취해서 delete projects api를 호출할 수도 있다. 
-# 그래서 현대 앱들은 JWT 인증을 사용한다 
-# Clerk도 내부적으로는 JWT 인증을 사용한다. 그래서 Clerk은 유저 회원가입 시, JWT 토큰을 주고, 브라우저는 이를 쿠키나 localStorage에 저장한다.  
-# JWT 토큰은 암호화되어 있는 토큰이다. 그리고 그 안에 clerk_id를 숨겨놓았다.. 그래서 서버에서는 이를 decode할 수 있다 
-# 클라이언트는 clerk_id를 바로 body에 담아서 전달하는게 아니라, authentication header에 JWT 토큰을 보내면 된다.  
-
-# API 호출은 전부 header와 payload(body)를 가진다. header에는 token이 첨부되고, 서버는 그 토큰이 올바른지 검증한다 
-# 이 API endpoint가 호출될 때마다, 검증
-
-# 우리는 이걸 fast API method Depends() 를  사용해 할 수 있다.
-# API가 호출될때, 특정 함수(clerk_id를 추출해서, 우리에게 전달해주는)를 실행시키고 싶을때  
